@@ -6,6 +6,26 @@ import SongList from "./SongList";
 
 function App() {
   const [songs, setSongs] = useState([]);
+  useEffect(() => {
+    fetch("https://playlist-dca21.firebaseio.com/songs.json")
+      .then((response) => {
+        return response.json();
+      })
+      .then((data) => {
+        if (data) {
+          const songs = Object.entries(data).map((song) => {
+            return {
+              ...song[1],
+              id: song[0],
+            };
+          });
+          setSongs(songs);
+        }
+      })
+      .catch((error) => {
+        console.error("Error:", error);
+      });
+  }, []);
   const [newSong, setNewSong] = useState({
     title: "",
     artist: "",
@@ -26,23 +46,33 @@ function App() {
     const emptyValues = Object.values(newSong).some((value) => !value);
     if (emptyValues) return;
 
-    setSongs((prevSongsState) => {
-      let lastId;
-      if (prevSongsState.length) {
-        const lastIndex = prevSongsState.length - 1;
-        lastId = prevSongsState[lastIndex].id;
-      }
-      return [
-        ...prevSongsState,
-        {
-          id: lastId + 1 || 1,
-          title: newSong.title,
-          artist: newSong.artist,
-          genre: newSong.genre,
-          rating: newSong.rating,
-        },
-      ];
-    });
+    fetch("https://playlist-dca21.firebaseio.com/songs.json", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(newSong),
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        const newId = data.name;
+        setSongs((prevSongsState) => {
+          return [
+            ...prevSongsState,
+            {
+              id: newId,
+              title: newSong.title,
+              artist: newSong.artist,
+              genre: newSong.genre,
+              rating: newSong.rating,
+            },
+          ];
+        });
+      })
+      .catch((error) => {
+        console.error("Error:", error);
+      });
+
     setNewSong({
       title: "",
       artist: "",
@@ -51,7 +81,15 @@ function App() {
     });
   };
   const handleDeleteButtonClick = (event) => {
-    const id = Number(event.target.name);
+    const id = event.target.name;
+
+    fetch(`https://playlist-dca21.firebaseio.com/songs/${id}.json`, {
+      method: "DELETE",
+    })
+      .then((response) => response.json())
+      .catch((error) => {
+        console.error("Error:", error);
+      });
 
     setSongs((prevSongsState) => {
       const newSongsState = [...prevSongsState];
